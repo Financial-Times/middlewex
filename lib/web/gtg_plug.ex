@@ -22,7 +22,7 @@ defmodule FT.Web.GtgPlug do
   end
 
   @impl true
-  def call(conn = %Plug.Conn{path_info: ["__gtg"]}, _config) do
+  def call(%Plug.Conn{path_info: ["__gtg"]} = conn, _config) do
     conn
     |> put_resp_content_type("text/plain")
     |> send_resp(200, "OK")

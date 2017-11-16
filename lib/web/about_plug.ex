@@ -47,7 +47,7 @@ defmodule FT.Web.AboutPlug do
   run-time resolved values.
   """
   @impl true
-  @spec init([otp_app: atom]) :: %{optional(atom) => String.t | atom | integer | list }
+  @spec init([otp_app: atom]) :: %{optional(atom) => String.t | atom | integer | list}
   def init(opts) do
     otp_app = opts[:otp_app] || arg_error!("otp_app argument is required")
     config = Application.get_env(otp_app, :about) || arg_error!(":about key required in #{otp_app} configuration")
@@ -56,7 +56,7 @@ defmodule FT.Web.AboutPlug do
 
   @doc false
   @impl true
-  def call(conn = %Plug.Conn{path_info: ["__about"]}, about) do
+  def call(%Plug.Conn{path_info: ["__about"]} = conn, about) do
     conn
     |> put_resp_content_type("application/json")
     |> send_resp(200, Poison.encode_to_iodata!(%{about | _hostname: hostname()}))

@@ -43,7 +43,7 @@ defmodule FT.Web.NeedsRolePlug do
 
   @impl true
   @spec call(conn :: Plug.Conn.t, config :: %{role: atom}) :: Plug.Conn.t
-  def call(conn = %{private: %{authentication: %{roles: roles}}}, %{role: role}) do
+  def call(%{private: %{authentication: %{roles: roles}}} = conn, %{role: role}) do
     Logger.debug(fn -> "#{__MODULE__} Looking for role: #{role} in tags: #{inspect roles}" end)
 
     if roles[role] do

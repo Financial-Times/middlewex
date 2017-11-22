@@ -13,14 +13,16 @@ defmodule NiceLoggerPlugTest do
     log = capture_log([level: :info], fn ->
       conn = Plug.Test.conn(:get, "/foo/bar?x=100")
       conn = %{conn | remote_ip: {10, 0, 0, 1}}
+      conn = put_req_header(conn, "user-agent", ~S(ua "agent"))
       _conn2 = FT.Web.NiceLoggerPlug.call(conn, {:info, :milliseconds})
     end)
-
+    IO.puts log
     parts = String.split(String.trim(log))
     assert ~S(method=GET) in parts
     assert ~S(path="/foo/bar") in parts
     assert ~S(query="x=100") in parts
     assert ~S(remote_ip=10.0.0.1) in parts
+    assert String.contains?(log, ~S(user_agent="ua \"agent\""))
   end
 
   test "logs response" do

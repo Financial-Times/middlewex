@@ -1,14 +1,15 @@
 defmodule FT.Web.NiceLoggerPlug do
   @moduledoc """
-  A plug for logging request information in a nice, Splunk compatible format:
+  A plug for logging request information in a nice, Splunk compatible format, with strings quoted, and quotes escaped:
 
-      09:17:08.251 [info]  method=GET path="/foo/bar" query="x=100" remote_ip=10.0.0.1
-      09:17:08.251 [info]  type=Sent status=200 duration=572 method=GET path="/foo/bar" query="x=100" remote_ip=10.0.0.1
+      09:17:08.251 [info]  method=GET path="/foo/bar" query="x=100" remote_ip=10.0.0.1 user_agent="some agent"
+      09:17:08.251 [info]  method=GET path="/foo/bar" query="x=100" remote_ip=10.0.0.1 type=Sent status=200 duration=572
 
-  Note that the request details are repeated in the log line, allowing searches for duration to be
-  filtered by path.
+  Note that the main request details are repeated in the log line, allowing, for example,
+  searches for duration to be filtered by path. Logger metadata will also appear on the
+  log line (if enabled in the Logger back-end), so you should also get `request_id` etc.
 
-  To use it, just plug it into the desired module.
+  To use, just plug into your endpoint/router:
 
       plug FT.Web.NiceLoggerPlug, log: :debug
 
@@ -35,7 +36,10 @@ defmodule FT.Web.NiceLoggerPlug do
   def call(conn, {level, time_unit}) do
     common_request_props = request_props(conn)
 
-    Logger.log level, common_request_props
+    Logger.log level, fn -> [
+      common_request_props,
+      ~S( user_agent="), escapeQuotes(header(conn.req_headers, "user-agent")), ?"
+    ] end
 
     start = System.monotonic_time()
 
@@ -45,11 +49,10 @@ defmodule FT.Web.NiceLoggerPlug do
         diff = System.convert_time_unit(stop - start, :native, time_unit)
 
         [
-          "type=", connection_type(conn),
+          common_request_props,
+          " type=", connection_type(conn),
           " status=", Integer.to_string(conn.status),
-          " duration=", Integer.to_string(diff),
-          32
-          | common_request_props
+          " duration=", Integer.to_string(diff)
         ]
       end
       conn
@@ -60,7 +63,7 @@ defmodule FT.Web.NiceLoggerPlug do
     [
       "method=", conn.method,
       ~S( path="), conn.request_path,
-      ~S(" query="), String.replace(conn.query_string, ~S("), ~S(\\")),
+      ~S(" query="), escapeQuotes(conn.query_string),
       ~S(" remote_ip=), format_ip(conn.remote_ip)
     ]
   end
@@ -71,4 +74,14 @@ defmodule FT.Web.NiceLoggerPlug do
   defp format_ip({_, _, _, _} = ip4), do: :inet.ntoa(ip4)
   defp format_ip({_, _, _, _, _, _, _, _} = ip6), do: :inet.ntoa(ip6)
   defp format_ip(_), do: "unknown"
+
+  defp escapeQuotes(s), do: String.replace(s, ~S("), ~S(\"))
+
+  defp header(headers, header) do
+    case List.keyfind(headers, header, 0) do
+      {_, val} -> val
+      _ -> ""
+    end
+  end
+
 end

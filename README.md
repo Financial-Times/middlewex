@@ -1,8 +1,12 @@
 # Plug Middleware for FT Elixir Apps
 
-* API Key header validation and role assignment with `FT.Web.TaggedApiKeyPlug`.
-* Role-based authorisation with `FT.Web.NeedsRolePlug`.
-* `__gtg` and `__about` with `FT.Web.GtgPlug` and `FT.Web.AboutPlug`.
+* API Key header validation and role assignment with `TaggedApiKeyPlug`.
+* Role-based authorisation with `NeedsRolePlug`.
+* `__gtg` and `__about` with `GtgPlug` and `AboutPlug`.
+* `NiceLoggerPlug` which logs useful request details in a Splunk-friendly manner.
+* `FastlyClientIPPlug` which decodes the `Fastly-Client-IP` header.
+
+> NB all plug modules above are prefixed with `FT.Web.`.
 
 ## See also
 * For `__health` endpoint, see [Fettle](https://github.com/Financial-Times/fettle).
@@ -15,7 +19,13 @@ Add `middlewex` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:middlewex, github: "Financial-Times/middlewex"}
+    {:middlewex, github: "Financial-Times/middlewex", tag: "v0.3.0"}
   ]
 end
+```
+
+To generate docs in HTML, do:
+
+```
+mix docs
 ```

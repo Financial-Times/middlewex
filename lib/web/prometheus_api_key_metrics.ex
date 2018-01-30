@@ -10,7 +10,9 @@ defmodule FT.Web.PrometheusApiKeyMetrics do
   `Logger` metadata under `:api_key`. The same hash value is recorded in a
   `Prometheus.Metric.Counter` with `:method`, `:path_info` and `:keyhash` labels.
   """
-  use Prometheus
+  require Prometheus.Metric.Counter
+
+  alias Prometheus.Metric.Counter
 
   @behaviour FT.Web.ApiKeyMetrics
 
@@ -23,7 +25,7 @@ defmodule FT.Web.PrometheusApiKeyMetrics do
     key_hash = :erlang.phash2(key)
     Logger.metadata(api_key: key_hash)
     path = Enum.join(path_info, "/")
-    Prometheus.Metric.Counter.inc(name: :api_key_usage, labels: [method, path, key_hash])
+    Counter.inc(name: :api_key_usage, labels: [method, path, key_hash])
     conn
   end
 end

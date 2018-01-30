@@ -20,6 +20,7 @@ defmodule FT.Web.Errors do
     @doc "send a 403 response, rather than raising an exception"
     def send(conn, message \\ "Forbidden") do
       conn
+      |> put_resp_content_type("text/plain")
       |> send_resp(403, message)
       |> halt()
     end

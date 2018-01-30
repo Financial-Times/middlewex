@@ -54,8 +54,8 @@ defmodule FT.Web.TaggedApiKeyPlug do
 
   ## Plug.Conn Result
 
-  Unsuccessful key validation will throw a `ForbiddenError`, resulting in
-  a 403 response, and halt the pipeline.
+  Unsuccessful key validation will call `FT.Web.Errors.ForbiddenError.send/2`, resulting in
+  a 403 response, and will halt the pipeline.
 
   Successful key validation sets `conn.private.authentication` with a map:
 
@@ -118,7 +118,7 @@ defmodule FT.Web.TaggedApiKeyPlug do
       given_api_key = api_key_from_header(conn, header)
 
       if is_nil(given_api_key) do
-        raise ForbiddenError, message: "API key required."
+        ForbiddenError.send(conn, "API key required.")
       else
         keys_config
         |> fetch_keys()
@@ -135,7 +135,7 @@ defmodule FT.Web.TaggedApiKeyPlug do
             |> put_authentication(given_api_key, roles)
             |> record_metrics(given_api_key, metrics)
           _ ->
-            raise ForbiddenError, message: "Invalid API key."
+            ForbiddenError.send(conn, "Invalid API key.")
         end
       end
   end

@@ -96,28 +96,29 @@ defmodule FT.Web.TaggedApiKeyTest do
 
         ["XYZZY", "YYZZX"]
         |> Enum.map(fn key ->
-            try do
-                conn = call([keys: "SECRET,XYZZY,YYZZX"], key)
-                assert conn.assigns.api_key == key
-                assert conn.private.authentication
-                assert conn.private.authentication == %{method: :api_key, key: key, roles: %{}}
-
-              rescue
-                _ in FT.Web.Errors.ForbiddenError -> flunk("Unexpected Forbidden for key #{key}")
-            end
+            conn = call([keys: "SECRET,XYZZY,YYZZX"], key)
+            refute conn.status == 403, "Unexpected denial for key #{key}"
+            assert conn.assigns.api_key == key
+            assert conn.private.authentication
+            assert conn.private.authentication == %{method: :api_key, key: key, roles: %{}}
         end)
     end
 
     @tag :api_key
     test "invalid api key" do
-        assert_raise FT.Web.Errors.ForbiddenError, fn -> call([keys: "WRONGKEY"], "XYZZY") end
+        conn = call([keys: "WRONGKEY"], "XYZZY")
+
+        assert conn.status == 403
+        assert conn.halted
     end
 
     @tag :api_key
     test "no api key" do
         conn = conn(:get, "/foo", "bar=10")
+        |> TaggedApiKeyPlug.call(%{header: "x-header", keys: "XYZZY", metrics: false})
 
-        assert_raise FT.Web.Errors.ForbiddenError, fn ->  TaggedApiKeyPlug.call(conn, %{header: "x-header", keys: "XYZZY", metrics: false}) end
+        assert conn.status == 403
+        assert conn.halted
     end
 
     @tag :api_key
@@ -129,7 +130,9 @@ defmodule FT.Web.TaggedApiKeyTest do
         conn = call(config, "XYZZY")
         assert conn.assigns.api_key == "XYZZY"
 
-        assert_raise FT.Web.Errors.ForbiddenError, fn -> call(config, "ZXYYX") end
+        conn = call(config, "ZXYYX")
+        assert conn.status == 403
+        assert conn.halted
     end
 
   end
@@ -164,8 +167,10 @@ defmodule FT.Web.TaggedApiKeyTest do
 
       conn = conn(:get, "/")
       |> put_req_header("x-api-key", "ZYXXY")
+      |> TaggedApiKeyPlug.call(config)
 
-      assert_raise FT.Web.Errors.ForbiddenError, fn -> TaggedApiKeyPlug.call(conn, config) end
+      assert conn.status == 403
+      assert conn.halted
 
       refute_received {:metrics, _}
     end

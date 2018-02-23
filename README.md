@@ -19,7 +19,7 @@ Add `middlewex` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:middlewex, github: "Financial-Times/middlewex", tag: "v0.3.0"}
+    {:middlewex, github: "Financial-Times/middlewex", tag: "v0.4.0"}
   ]
 end
 ```

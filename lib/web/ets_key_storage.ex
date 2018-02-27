@@ -2,7 +2,8 @@ defmodule FT.Web.ETSKeyStorage do
   @moduledoc """
   A key storage module that stores keys in an ETS table.
 
-  Call `setup/1` with keys before `lookup/1` is called.
+  Call `setup/1` with keys before `lookup/1` is called, e.g in your `Application.start/2`
+  method or other permanent supervised process.
   """
 
   @behaviour FT.Web.KeyStorage

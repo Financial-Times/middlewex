@@ -11,10 +11,8 @@ defmodule FT.Web.TaggedApiKeyPlug do
 
   * `header`: request header to examine for api key, default `"x-api-key"`.
   * `metrics`: module implementing `FT.Web.ApiKeyMetrics` behaviour to use to report metrics, default disabled (`false`).
-  * `keys`: a String, or an MFA tuple (`{module,function,[argument, ...]}`) to call with `Kernel.apply/3`, which should
-  return a `String` or a map of `key => [tags]`.
-
-  NB keys specfied as an MFA are resolved at run-time.
+  * `keys`: source for api keys; see below.
+  * `forbid` : whether to generate a `403 Forbidden` if no api key matches, or to pass through to next authentication method; default `true`.
 
   ## Phoenix Example
   In your Phoenix Router:
@@ -30,46 +28,57 @@ defmodule FT.Web.TaggedApiKeyPlug do
   end
   ```
 
-  ## Key Interpretation
+  ## Keys
 
-  If the keys resolve as the String:
+  Keys can be specified via the `keys` option as:
+  * a `String` containing serialized keys.
+  * the atom name of a module implementing the `FT.Web.KeyStorage` behaviour.
+  * an *MFA* tuple which should return a `String` or a map of `key => [roles].
+
+  NB keys specfied as an `KeyStorage` module or MFA are resolved at run-time.
+
+  ### Interpretation
+
+  If the keys resolves as the string:
   ```
-  xxxxx<>tagA,yyyyy<>tagA<>tagB,zzzzz
+  xxxxx<>roleA,yyyyy<>roleA<>roleB,zzzzz
   ```
 
   This would be interpreted as:
-  * `xxxx` has single tag `tagA`
-  * `yyyy` has tags `tagA` and `tagB`
-  * `zzzz` has no tags
+  * key `xxxx` has single role `roleA` assigned.
+  * key `yyyy` has roles `roleA` and `roleB` assigned.
+  * key `zzzz` assigns no roles.
 
   If an MFA returned a map for the same data it would be:
   ```
   %{
-    "xxxx" => [:tagA],
-    "yyyy" => [:tagA, :tagB],
+    "xxxx" => [:roleA],         # or %{roleA: true}
+    "yyyy" => [:roleA, :roleB], # or %{roleA: true, roleB: true}
     "zzzz" => []
   }
   ```
-  (Note that tags can be specified as atoms or Strings in either case).
+  Note that roles can be specified as a list of `atom` or `String`,
+  or as a `map` of `atom => true`.
+
+  In either case, roles end up as `atom => true` entries in the `FT.Web.Authentication{}` struct.
 
   ## Plug.Conn Result
 
   Unsuccessful key validation will call `FT.Web.Errors.ForbiddenError.send/2`, resulting in
   a 403 response, and will halt the pipeline.
 
-  Successful key validation sets `conn.private.authentication` with a map:
+  Successful key validation sets `conn.private.authentication` with a `FT.Web.Authentication` struct:
 
   ```
-  %{method: :api_key, key: key, roles: tags}
+  %FT.Web.Authentication{method: :api_key, roles: tags, private: %{key: key}}
   ```
 
   Where `key` is the valid api key, and `roles` is a map of `role => true`, where `role` is
-  the `atom` form of associated tags (converted via `String.to_atom/1` if necessary), providing a
-  straight-forward way of pattern matching roles, e.g. for key `xxxx` above, `private.authentication`
-  would be:
+  the `atom` form of the role name, providing a straight-forward way of pattern matching
+  on roles, e.g. for key `xxxx` above, `private.authentication` would be:
 
   ```
-  %{method: :api_key, key: "xxxx", roles: %{tagA: true}}
+  %FT.Web.Authentication{method: :api_key, roles: %{tagA: true}, private: %{key; "xxxx"}}
   ```
 
   ## Metrics
@@ -88,7 +97,6 @@ defmodule FT.Web.TaggedApiKeyPlug do
   @type key_config :: {module, atom, list} | String.t | atom
 
   @type roles ::  FT.Web.Authentication.roles
-  @type authentication :: %{method: :api_key, key: String.t, roles: roles}
 
   @default_header "x-api-key"
 
@@ -99,16 +107,18 @@ defmodule FT.Web.TaggedApiKeyPlug do
   def init(options) do
       header = Keyword.get(options, :header, @default_header)
       metrics = Keyword.get(options, :metrics, false)
-      no_forbid = Keyword.get(options, :no_forbid, false)
+      forbid = !!Keyword.get(options, :forbid, true)
       keys_config = Keyword.get(options, :keys)
       keys = case keys_config do
         {m, f, a} -> {m, f, a}
         "" <> keys -> keys
-        m when is_atom(m) and not is_nil(m) -> m
+        m when is_atom(m) and not is_nil(m) ->
+          Kernel.function_exported?(m, :lookup, 1) || raise ArgumentError, message: "Module must implement FT.Web.KeyStorage"
+          m
         _ -> raise ArgumentError, message: "Plug requires :keys option, mod, {mod, fun, args} or String"
       end
 
-      %{header: header, keys: keys, forbid: !no_forbid, metrics: metrics}
+      %{header: header, keys: keys, forbid: forbid, metrics: metrics}
   end
 
   @impl true
@@ -137,9 +147,9 @@ defmodule FT.Web.TaggedApiKeyPlug do
       end
   end
 
-  @spec lookup(keys_config :: key_config, key :: String.t) :: {:ok, [String.t] | roles} | false
+  @spec lookup(keys_config :: key_config, key :: String.t) :: {:ok, roles} | false
   defp lookup(m, key) when is_atom(m) do
-    m.lookup(key)
+    m.lookup(key)  # FT.Web.KeyStorage impl
   end
 
   defp lookup("" <> keys, key) do
@@ -175,8 +185,7 @@ defmodule FT.Web.TaggedApiKeyPlug do
     %FT.Web.Authentication{method: :api_key, roles: roles, private: %{key: key}}
   end
 
-  @spec to_roles([String.t] | map) :: roles
-  defp to_roles(tags) when is_map(tags), do: tags
+  @spec to_roles([String.t]) :: roles
   defp to_roles(tags) when is_list(tags) do
     Enum.into(tags, %{}, fn
       tag when is_atom(tag) -> {tag, true}

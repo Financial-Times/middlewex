@@ -49,7 +49,7 @@ defmodule FT.Web.NeedsRoleTest do
   defp call(required_role, auth_tags) do
     config = FT.Web.NeedsRolePlug.init([role: required_role])
     conn = conn(:get, "/foo", "bar=10")
-      |> put_private(:authentication, %{roles: auth_tags})
+      |> put_private(:authentication, %FT.Web.Authentication{method: :api_key, roles: auth_tags})
 
     FT.Web.NeedsRolePlug.call(conn, config)
   end

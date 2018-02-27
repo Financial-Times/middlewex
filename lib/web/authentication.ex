@@ -3,6 +3,7 @@ defmodule FT.Web.Authentication do
   Defines type of authentication data to be stored in `Plug.Conn` `private.authentication` field.
   """
 
+  @enforce_keys [:method]
   defstruct [
     method: nil,
     roles: %{},
@@ -29,5 +30,9 @@ defmodule FT.Web.Authentication do
   def put_authentication(%Plug.Conn{} = conn, %__MODULE__{} = auth) do
     Plug.Conn.put_private(conn, :authentication, auth)
   end
+
+  @doc "does the Plug.Conn contain authentication details?"
+  def authenticated?(%Plug.Conn{private: %{authentication: %__MODULE__{}}}), do: true
+  def authenticated?(%Plug.Conn{}), do: false
 
 end

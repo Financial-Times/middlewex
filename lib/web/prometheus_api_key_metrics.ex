@@ -17,7 +17,11 @@ defmodule FT.Web.PrometheusApiKeyMetrics do
   @behaviour FT.Web.ApiKeyMetrics
 
   def setup() do
-    Counter.declare(name: :api_key_usage, labels: [:method, :path, :keyhash], help: "API Key usage")
+    Counter.declare(
+      name: :api_key_usage,
+      labels: [:method, :path, :keyhash],
+      help: "API Key usage"
+    )
   end
 
   @impl true

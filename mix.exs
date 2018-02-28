@@ -6,7 +6,7 @@ defmodule Middlewex.Mixfile do
       app: :middlewex,
       version: "0.4.0",
       elixir: "~> 1.5",
-      start_permanent: Mix.env == :prod,
+      start_permanent: Mix.env() == :prod,
       deps: deps(),
       name: "Middlewex",
       source_url: "https://github.com/Financial-Times/middlewex",
@@ -42,7 +42,8 @@ defmodule Middlewex.Mixfile do
     [
       maintainers: ["Ellis Pritchard"],
       licenses: ["MIT"],
-      links: %{"Github" => "https://github.com/Financial-Times/middlewex"} ]
+      links: %{"Github" => "https://github.com/Financial-Times/middlewex"}
+    ]
   end
 
   defp description do
@@ -52,8 +53,6 @@ defmodule Middlewex.Mixfile do
   end
 
   def docs do
-    [main: "readme",
-     extras: ["README.md"]]
+    [main: "readme", extras: ["README.md"]]
   end
-
 end

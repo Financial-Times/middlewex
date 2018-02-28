@@ -38,7 +38,7 @@ defmodule FT.Web.AboutPlug do
 
   @behaviour Plug
 
-  @app_version Mix.Project.config[:version]
+  @app_version Mix.Project.config()[:version]
 
   @doc """
   Plug init function: requires `opt_app` option, which should specify source app of `:about` config.
@@ -47,10 +47,14 @@ defmodule FT.Web.AboutPlug do
   run-time resolved values.
   """
   @impl true
-  @spec init([otp_app: atom]) :: %{optional(atom) => String.t | atom | integer | list}
+  @spec init(otp_app: atom) :: %{optional(atom) => String.t() | atom | integer | list}
   def init(opts) do
     otp_app = opts[:otp_app] || arg_error!("otp_app argument is required")
-    config = Application.get_env(otp_app, :about) || arg_error!(":about key required in #{otp_app} configuration")
+
+    config =
+      Application.get_env(otp_app, :about) ||
+        arg_error!(":about key required in #{otp_app} configuration")
+
     about(config)
   end
 
@@ -81,10 +85,11 @@ defmodule FT.Web.AboutPlug do
       description: description,
       purpose: purpose,
       appVersion: to_string(Version.parse!(config[:app_version] || @app_version)),
-      serviceTier: (config[:service_tier] || :bronze),
-      contacts: (config[:contacts] || []),
-      links: (config[:links] || []),
-      _hostname: nil # resolved dynamically, see hostname/0
+      serviceTier: config[:service_tier] || :bronze,
+      contacts: config[:contacts] || [],
+      links: config[:links] || [],
+      # resolved dynamically, see hostname/0
+      _hostname: nil
     }
   end
 
@@ -93,5 +98,5 @@ defmodule FT.Web.AboutPlug do
     List.to_string(hostname)
   end
 
-  defp arg_error!(msg), do: raise ArgumentError, msg
+  defp arg_error!(msg), do: raise(ArgumentError, msg)
 end

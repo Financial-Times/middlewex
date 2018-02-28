@@ -36,35 +36,47 @@ defmodule FT.Web.NiceLoggerPlug do
   def call(conn, {level, time_unit}) do
     common_request_props = request_props(conn)
 
-    Logger.log level, fn -> [
-      common_request_props,
-      ~S( user_agent="), escapeQuotes(header(conn.req_headers, "user-agent")), ?"
-    ] end
+    Logger.log(level, fn ->
+      [
+        common_request_props,
+        ~S( user_agent="),
+        escapeQuotes(header(conn.req_headers, "user-agent")),
+        ?"
+      ]
+    end)
 
     start = System.monotonic_time()
 
     Conn.register_before_send(conn, fn conn ->
-      Logger.log level, fn ->
+      Logger.log(level, fn ->
         stop = System.monotonic_time()
         diff = System.convert_time_unit(stop - start, :native, time_unit)
 
         [
           common_request_props,
-          " type=", connection_type(conn),
-          " status=", Integer.to_string(conn.status),
-          " duration=", Integer.to_string(diff)
+          " type=",
+          connection_type(conn),
+          " status=",
+          Integer.to_string(conn.status),
+          " duration=",
+          Integer.to_string(diff)
         ]
-      end
+      end)
+
       conn
     end)
   end
 
   defp request_props(conn) do
     [
-      "method=", conn.method,
-      ~S( path="), conn.request_path,
-      ~S(" query="), escapeQuotes(conn.query_string),
-      ~S(" remote_ip=), format_ip(conn.remote_ip)
+      "method=",
+      conn.method,
+      ~S( path="),
+      conn.request_path,
+      ~S(" query="),
+      escapeQuotes(conn.query_string),
+      ~S(" remote_ip=),
+      format_ip(conn.remote_ip)
     ]
   end
 
@@ -83,5 +95,4 @@ defmodule FT.Web.NiceLoggerPlug do
       _ -> ""
     end
   end
-
 end

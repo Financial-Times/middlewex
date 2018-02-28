@@ -23,13 +23,13 @@ defmodule FT.Web.GtgPlug do
 
   @impl true
   def call(%Plug.Conn{path_info: ["__gtg"]} = conn, _config) do
+    # NB depending on where this is placed, no logging
     conn
     |> put_resp_content_type("text/plain")
     |> send_resp(200, "OK")
-    |> halt() # NB depending on where this is placed, no logging
+    |> halt()
   end
 
   @impl true
   def call(conn, _config), do: conn
-
 end

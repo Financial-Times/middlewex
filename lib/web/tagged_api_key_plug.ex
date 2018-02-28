@@ -1,5 +1,4 @@
 defmodule FT.Web.TaggedApiKeyPlug do
-
   @moduledoc """
   Validates a header value against valid keys, and either denies request, or updates
   the `Plug.Conn` with authentication details in a `FT.Web.Authentication` struct.
@@ -94,31 +93,47 @@ defmodule FT.Web.TaggedApiKeyPlug do
 
   alias FT.Web.Errors.ForbiddenError
 
-  @type key_config :: {module, atom, list} | String.t | atom
+  @type key_config :: {module, atom, list} | String.t() | atom
 
-  @type roles ::  FT.Web.Authentication.roles
+  @type roles :: FT.Web.Authentication.roles()
 
   @default_header "x-api-key"
 
   @behaviour Plug
 
   @impl true
-  @spec init([header: String.t, keys: key_config]) :: %{header: String.t, keys: key_config, forbid: boolean, metrics: module | false}
+  @spec init(header: String.t(), keys: key_config) :: %{
+          header: String.t(),
+          keys: key_config,
+          forbid: boolean,
+          metrics: module | false
+        }
   def init(options) do
-      header = Keyword.get(options, :header, @default_header)
-      metrics = Keyword.get(options, :metrics, false)
-      forbid = !!Keyword.get(options, :forbid, true)
-      keys_config = Keyword.get(options, :keys)
-      keys = case keys_config do
-        {m, f, a} -> {m, f, a}
-        "" <> keys -> keys
+    header = Keyword.get(options, :header, @default_header)
+    metrics = Keyword.get(options, :metrics, false)
+    forbid = !!Keyword.get(options, :forbid, true)
+    keys_config = Keyword.get(options, :keys)
+
+    keys =
+      case keys_config do
+        {m, f, a} ->
+          {m, f, a}
+
+        "" <> keys ->
+          keys
+
         m when is_atom(m) and not is_nil(m) ->
-          Kernel.function_exported?(m, :lookup, 1) || raise ArgumentError, message: "Module must implement FT.Web.KeyStorage"
+          Kernel.function_exported?(m, :lookup, 1) ||
+            raise ArgumentError, message: "Module must implement FT.Web.KeyStorage"
+
           m
-        _ -> raise ArgumentError, message: "Plug requires :keys option, mod, {mod, fun, args} or String"
+
+        _ ->
+          raise ArgumentError,
+            message: "Plug requires :keys option, mod, {mod, fun, args} or String"
       end
 
-      %{header: header, keys: keys, forbid: forbid, metrics: metrics}
+    %{header: header, keys: keys, forbid: forbid, metrics: metrics}
   end
 
   @impl true
@@ -126,34 +141,40 @@ defmodule FT.Web.TaggedApiKeyPlug do
 
   @impl true
   def call(conn, %{header: header, keys: keys_config, forbid: forbid, metrics: metrics}) do
+    given_api_key = api_key_from_header(conn, header)
 
-      given_api_key = api_key_from_header(conn, header)
+    if is_nil(given_api_key) do
+      if(forbid, do: ForbiddenError.send(conn, "API key required."), else: conn)
+    else
+      case lookup(keys_config, given_api_key) do
+        {:ok, roles} ->
+          Logger.debug(fn ->
+            "#{__MODULE__} Valid key #{given_api_key} has tags #{inspect(Map.keys(roles))}"
+          end)
 
-      if is_nil(given_api_key) do
-        if(forbid, do: ForbiddenError.send(conn, "API key required."), else: conn)
-      else
-        case lookup(keys_config, given_api_key) do
-          {:ok, roles} ->
-            Logger.debug(fn -> "#{__MODULE__} Valid key #{given_api_key} has tags #{inspect Map.keys(roles)}" end)
+          # compatible
+          # compatible
+          conn
+          |> assign(:api_key, given_api_key)
+          |> assign(:auth_tags, roles)
+          |> put_authentication(given_api_key, roles)
+          |> record_metrics(given_api_key, metrics)
 
-            conn
-            |> assign(:api_key, given_api_key) # compatible
-            |> assign(:auth_tags, roles) # compatible
-            |> put_authentication(given_api_key, roles)
-            |> record_metrics(given_api_key, metrics)
-          false ->
-            if(forbid, do: ForbiddenError.send(conn, "Invalid API key."), else: conn)
-        end
+        false ->
+          if(forbid, do: ForbiddenError.send(conn, "Invalid API key."), else: conn)
       end
+    end
   end
 
-  @spec lookup(keys_config :: key_config, key :: String.t) :: {:ok, roles} | false
+  @spec lookup(keys_config :: key_config, key :: String.t()) :: {:ok, roles} | false
   defp lookup(m, key) when is_atom(m) do
-    m.lookup(key)  # FT.Web.KeyStorage impl
+    # FT.Web.KeyStorage impl
+    m.lookup(key)
   end
 
   defp lookup("" <> keys, key) do
     keys = expand_keys(keys)
+
     case keys[key] do
       nil -> false
       tags when is_list(tags) -> {:ok, to_roles(tags)}
@@ -163,6 +184,7 @@ defmodule FT.Web.TaggedApiKeyPlug do
   defp lookup({m, f, a}, key) do
     keys = apply(m, f, a)
     keys = expand_keys(keys)
+
     case keys[key] do
       nil -> false
       tags when is_list(tags) -> {:ok, to_roles(tags)}
@@ -180,12 +202,12 @@ defmodule FT.Web.TaggedApiKeyPlug do
     FT.Web.Authentication.put_authentication(conn, authentication(key, roles))
   end
 
-  @spec authentication(key :: String.t, roles :: roles) :: FT.Web.Authentication.t
+  @spec authentication(key :: String.t(), roles :: roles) :: FT.Web.Authentication.t()
   defp authentication(key, roles) when is_map(roles) do
     %FT.Web.Authentication{method: :api_key, roles: roles, private: %{key: key}}
   end
 
-  @spec to_roles([String.t]) :: roles
+  @spec to_roles([String.t()]) :: roles
   defp to_roles(tags) when is_list(tags) do
     Enum.into(tags, %{}, fn
       tag when is_atom(tag) -> {tag, true}
@@ -195,24 +217,26 @@ defmodule FT.Web.TaggedApiKeyPlug do
 
   # retrieve value of key header
   defp api_key_from_header(%Plug.Conn{req_headers: req_headers}, accepted_header) do
-      found_header = Enum.find(req_headers, fn {name, _} -> name == accepted_header end)
+    found_header = Enum.find(req_headers, fn {name, _} -> name == accepted_header end)
 
-      case found_header do
-          {_name, value} -> value
-          _ -> nil
-      end
+    case found_header do
+      {_name, value} -> value
+      _ -> nil
+    end
   end
 
   # split key config string into a map of `key => [tag, ...]`
   defp expand_keys("" <> keys) do
+    # [key, key<>x, key <>x<>y]
+    #   [[key], [key, x], [key, x, y]
+    # [{key, [tags]}, ...]
     keys
-    |> String.splitter(",", trim: true) # [key, key<>x, key <>x<>y]
-    |> Stream.map(&(String.split(&1, "<>", trim: true))) #  [[key], [key, x], [key, x, y]
-    |> Stream.map(fn [key | tags] -> {key, tags} end) # [{key, [tags]}, ...]
+    |> String.splitter(",", trim: true)
+    |> Stream.map(&String.split(&1, "<>", trim: true))
+    |> Stream.map(fn [key | tags] -> {key, tags} end)
     |> Enum.into(%{})
   end
 
   # config module may supply fully expanded key => [tags] map.
   defp expand_keys(keys) when is_map(keys), do: keys
-
 end

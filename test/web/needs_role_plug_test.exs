@@ -6,15 +6,13 @@ defmodule FT.Web.NeedsRoleTest do
 
   require Logger
 
-
   describe "configuration with single role to check" do
     @tag :configuration
     test "configuration with single role" do
-      config = FT.Web.NeedsRolePlug.init([role: :leading_lady])
+      config = FT.Web.NeedsRolePlug.init(role: :leading_lady)
       assert config == %{role: :leading_lady}
     end
   end
-
 
   describe "role checking" do
     @tag :role
@@ -32,12 +30,13 @@ defmodule FT.Web.NeedsRoleTest do
       auth_tags = %{admin: true, intrepid_explorer: true}
 
       conn = call(required_role, auth_tags)
-      assert( conn.status == :nil )
+      assert(conn.status == nil)
     end
 
     @tag :role
     test "unauthenticated or non-role-based auth is forbidden" do
-      config = FT.Web.NeedsRolePlug.init([role: :foo])
+      config = FT.Web.NeedsRolePlug.init(role: :foo)
+
       conn =
         conn(:get, "/foo", "bar=10")
         |> FT.Web.NeedsRolePlug.call(config)
@@ -47,11 +46,12 @@ defmodule FT.Web.NeedsRoleTest do
   end
 
   defp call(required_role, auth_tags) do
-    config = FT.Web.NeedsRolePlug.init([role: required_role])
-    conn = conn(:get, "/foo", "bar=10")
+    config = FT.Web.NeedsRolePlug.init(role: required_role)
+
+    conn =
+      conn(:get, "/foo", "bar=10")
       |> put_private(:authentication, %FT.Web.Authentication{method: :api_key, roles: auth_tags})
 
     FT.Web.NeedsRolePlug.call(conn, config)
   end
-
 end

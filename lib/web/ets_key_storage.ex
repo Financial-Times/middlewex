@@ -15,7 +15,7 @@ defmodule FT.Web.ETSKeyStorage do
     Enum.each(keys, fn key_roles -> :ets.insert(table_ref, key_roles) end)
   end
 
-  @spec lookup(key :: String.t) :: {:ok, FT.Web.KeyStorage.roles} | false
+  @spec lookup(key :: String.t()) :: {:ok, FT.Web.KeyStorage.roles()} | false
   @impl FT.Web.KeyStorage
   def lookup(key) do
     case :ets.lookup(__MODULE__, key) do
@@ -26,11 +26,16 @@ defmodule FT.Web.ETSKeyStorage do
 
   # split key config string into a map of `"key" => %{:role => true, ...}`
   defp expand_keys("" <> keys) do
-    keys # "key1,key2<>x,key3<>x<>y"
-    |> String.splitter(",", trim: true) # ["key1", "key2<>x", "key3<>x<>y"]
-    |> Stream.map(&(String.split(&1, "<>", trim: true))) #  [["key1"], ["key2", "x"], ["key3", "x", "y"]
-    |> Stream.map(fn [key | roles] -> {key, roles} end) # [{"key1", []}, {"key2", ["x"]}, ...]
-    |> Stream.map(fn {key, roles} -> {key, to_roles_map(roles)} end) # [{"key1", %{}}, {"key2", %{x: true}}, ...]
+    # "key1,key2<>x,key3<>x<>y"
+    # ["key1", "key2<>x", "key3<>x<>y"]
+    #   [["key1"], ["key2", "x"], ["key3", "x", "y"]
+    # [{"key1", []}, {"key2", ["x"]}, ...]
+    # [{"key1", %{}}, {"key2", %{x: true}}, ...]
+    keys
+    |> String.splitter(",", trim: true)
+    |> Stream.map(&String.split(&1, "<>", trim: true))
+    |> Stream.map(fn [key | roles] -> {key, roles} end)
+    |> Stream.map(fn {key, roles} -> {key, to_roles_map(roles)} end)
     |> Enum.into(%{})
   end
 
@@ -40,5 +45,4 @@ defmodule FT.Web.ETSKeyStorage do
       tag -> {String.to_atom(tag), true}
     end)
   end
-
 end

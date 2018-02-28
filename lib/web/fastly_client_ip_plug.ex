@@ -41,13 +41,11 @@ defmodule FT.Web.FastlyClientIPPlug do
 
   def fastly_client_ip(headers, default) do
     with {_header, value} <- List.keyfind(headers, "fastly-client-ip", 0),
-      {:ok, ip_tuple} <- :inet.parse_address(String.to_charlist(value))
-    do
+         {:ok, ip_tuple} <- :inet.parse_address(String.to_charlist(value)) do
       ip_tuple
     else
       _error ->
         default
     end
   end
-
 end

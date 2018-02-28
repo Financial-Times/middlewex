@@ -31,20 +31,20 @@ defmodule FT.Web.NeedsRolePlug do
 
   @behaviour Plug
 
-  @type roles :: FT.Web.Authentication.roles
+  @type roles :: FT.Web.Authentication.roles()
 
   @impl true
-  @spec init([role: atom]) :: %{role: atom}
+  @spec init(role: atom) :: %{role: atom}
   def init(options) do
     role = Keyword.get(options, :role) || raise ArgumentError, "Needs role"
-    role = if(is_atom(role), do: role, else: (raise ArgumentError, "Role must be atom"))
+    role = if(is_atom(role), do: role, else: raise(ArgumentError, "Role must be atom"))
     %{role: role}
   end
 
   @impl true
-  @spec call(conn :: Plug.Conn.t, config :: %{role: atom}) :: Plug.Conn.t
+  @spec call(conn :: Plug.Conn.t(), config :: %{role: atom}) :: Plug.Conn.t()
   def call(%{private: %{authentication: %{roles: roles}}} = conn, %{role: role}) do
-    Logger.debug(fn -> "#{__MODULE__} Looking for role: #{role} in tags: #{inspect roles}" end)
+    Logger.debug(fn -> "#{__MODULE__} Looking for role: #{role} in tags: #{inspect(roles)}" end)
 
     if roles[role] do
       conn
@@ -63,5 +63,4 @@ defmodule FT.Web.NeedsRolePlug do
 
     ForbiddenError.send(conn, message)
   end
-
 end

@@ -64,17 +64,21 @@ defmodule FT.Web.NeedsAuthenticationPlug do
 
   @doc false
   @impl Plug
-  def call(%Plug.Conn{private: %{authentication: %Authentication{method: method}}} = conn, %{method: method}) do
+  def call(%Plug.Conn{private: %{authentication: %Authentication{method: method}}} = conn, %{
+        method: method
+      }) do
     conn
   end
+
   def call(%Plug.Conn{private: %{authentication: %Authentication{}}} = conn, %{method: nil}) do
     conn
   end
+
   def call(%Plug.Conn{} = conn, %{method: nil}) do
     FT.Web.Errors.ForbiddenError.send(conn, "Need authentication.")
   end
+
   def call(%Plug.Conn{} = conn, %{method: method}) do
     FT.Web.Errors.ForbiddenError.send(conn, "Need authentication by #{method}.")
   end
-
 end

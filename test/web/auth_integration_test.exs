@@ -7,21 +7,22 @@ defmodule AuthIntegrationTest do
     import FT.Web.Authentication
     alias FT.Web.Authentication
 
-    plug FT.Web.TaggedApiKeyPlug, keys: "xxxx", forbid: false
-    plug :other_auth
-    plug FT.Web.NeedsAuthenticationPlug
+    plug(FT.Web.TaggedApiKeyPlug, keys: "xxxx", forbid: false)
+    plug(:other_auth)
+    plug(FT.Web.NeedsAuthenticationPlug)
 
     get "/paid" do
       send_resp(conn, 200, "PAID")
     end
 
-    match _, do: send_resp(conn, 404, "Route not found")
+    match(_, do: send_resp(conn, 404, "Route not found"))
 
-    plug :match
-    plug :dispatch
+    plug(:match)
+    plug(:dispatch)
 
     def other_auth(conn, _opts) do
       conn = Plug.Conn.fetch_cookies(conn)
+
       if !authenticated?(conn) && conn.req_cookies["auth"] do
         put_authentication(conn, %Authentication{method: :cookie, roles: %{}})
       else
@@ -57,7 +58,7 @@ defmodule AuthIntegrationTest do
   end
 
   test "first method of auth is prime [*]" do
-    # [*] so long as enforced by implementing module!
+    #  [*] so long as enforced by implementing module!
     pipe_init = Pipeline.init([])
 
     conn = Plug.Test.conn("GET", "/paid")

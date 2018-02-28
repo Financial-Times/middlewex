@@ -6,17 +6,19 @@ defmodule NiceLoggerPlugTest do
 
   setup_all do
     Logger.configure(level: :info)
-    Logger.configure_backend(:console, [colors: [enabled: false]])
+    Logger.configure_backend(:console, colors: [enabled: false])
   end
 
   test "logs request" do
-    log = capture_log([level: :info], fn ->
-      conn = Plug.Test.conn(:get, "/foo/bar?x=100")
-      conn = %{conn | remote_ip: {10, 0, 0, 1}}
-      conn = put_req_header(conn, "user-agent", ~S(ua "agent"))
-      _conn2 = FT.Web.NiceLoggerPlug.call(conn, {:info, :milliseconds})
-    end)
-    IO.puts log
+    log =
+      capture_log([level: :info], fn ->
+        conn = Plug.Test.conn(:get, "/foo/bar?x=100")
+        conn = %{conn | remote_ip: {10, 0, 0, 1}}
+        conn = put_req_header(conn, "user-agent", ~S(ua "agent"))
+        _conn2 = FT.Web.NiceLoggerPlug.call(conn, {:info, :milliseconds})
+      end)
+
+    IO.puts(log)
     parts = String.split(String.trim(log))
     assert ~S(method=GET) in parts
     assert ~S(path="/foo/bar") in parts
@@ -29,9 +31,12 @@ defmodule NiceLoggerPlugTest do
     conn = Plug.Test.conn(:get, "/foo/bar?x=100")
     conn = %{conn | remote_ip: {10, 0, 0, 1}}
     conn2 = FT.Web.NiceLoggerPlug.call(conn, {:info, :milliseconds})
-    log = capture_log([level: :info], fn ->
-      send_resp(conn2, 401, "Denied")
-    end)
+
+    log =
+      capture_log([level: :info], fn ->
+        send_resp(conn2, 401, "Denied")
+      end)
+
     parts = String.split(String.trim(log))
     assert ~S(method=GET) in parts
     assert ~S(path="/foo/bar") in parts
@@ -45,15 +50,14 @@ defmodule NiceLoggerPlugTest do
   end
 
   test "logs request with no query params" do
-    log = capture_log([level: :info], fn ->
-      conn = Plug.Test.conn(:get, "/foo/bar")
-      _conn2 = FT.Web.NiceLoggerPlug.call(conn, {:info, :milliseconds})
-    end)
+    log =
+      capture_log([level: :info], fn ->
+        conn = Plug.Test.conn(:get, "/foo/bar")
+        _conn2 = FT.Web.NiceLoggerPlug.call(conn, {:info, :milliseconds})
+      end)
 
     parts = String.split(String.trim(log))
     assert ~S(path="/foo/bar") in parts
     assert ~S(query="") in parts
   end
-
-
 end

@@ -55,6 +55,23 @@ defmodule FT.Web.TaggedApiKeyTest do
     end
 
     @tag :configuration
+    test "configuration with keystorage module" do
+      defmodule DummyKS do
+        @behaviour FT.Web.KeyStorage
+        def lookup(_), do: {:ok, %{}}
+      end
+
+      config =  TaggedApiKeyPlug.init([keys: DummyKS])
+
+      %{keys: DummyKS} = config
+    end
+
+    @tag :configuration
+    test "configuration with non-keystorage module raises ArgumentError" do
+      assert_raise ArgumentError, fn -> TaggedApiKeyPlug.init([keys: __MODULE__]) end
+    end
+
+    @tag :configuration
     test "missing keys configuration raises ArgumentError" do
         assert_raise ArgumentError, fn ->  TaggedApiKeyPlug.init([header: "my-header"]) end
     end
@@ -67,8 +84,8 @@ defmodule FT.Web.TaggedApiKeyTest do
         conn = call([keys: "XYZZY"], "XYZZY")
 
         assert conn.assigns.api_key == "XYZZY"
-        assert conn.private.authentication
-        assert conn.private.authentication == %{method: :api_key, key: "XYZZY", roles: %{}}
+        assert FT.Web.Authentication.authentication(conn)
+        assert FT.Web.Authentication.authentication(conn) == %FT.Web.Authentication{method: :api_key, private: %{key: "XYZZY"}, roles: %{}}
     end
 
     @tag :api_key
@@ -77,8 +94,8 @@ defmodule FT.Web.TaggedApiKeyTest do
 
         assert conn.assigns.api_key == "XYZZY"
         assert conn.assigns.auth_tags == %{my_tag: true}
-        assert conn.private.authentication
-        assert conn.private.authentication == %{method: :api_key, key: "XYZZY", roles: %{my_tag: true}}
+        assert FT.Web.Authentication.authentication(conn)
+        assert FT.Web.Authentication.authentication(conn) == %FT.Web.Authentication{method: :api_key, private: %{key: "XYZZY"}, roles: %{my_tag: true}}
       end
 
     @tag :api_key
@@ -87,8 +104,8 @@ defmodule FT.Web.TaggedApiKeyTest do
 
         assert conn.assigns.api_key == "XYZZY"
         assert conn.assigns.auth_tags == %{my_tag: true, another: true}
-        assert conn.private.authentication
-        assert conn.private.authentication == %{method: :api_key, key: "XYZZY", roles: %{my_tag: true, another: true}}
+        assert FT.Web.Authentication.authentication(conn)
+        assert FT.Web.Authentication.authentication(conn) == %FT.Web.Authentication{method: :api_key, private: %{key: "XYZZY"}, roles: %{my_tag: true, another: true}}
     end
 
     @tag :api_key
@@ -99,8 +116,8 @@ defmodule FT.Web.TaggedApiKeyTest do
             conn = call([keys: "SECRET,XYZZY,YYZZX"], key)
             refute conn.status == 403, "Unexpected denial for key #{key}"
             assert conn.assigns.api_key == key
-            assert conn.private.authentication
-            assert conn.private.authentication == %{method: :api_key, key: key, roles: %{}}
+            assert FT.Web.Authentication.authentication(conn)
+            assert FT.Web.Authentication.authentication(conn) == %FT.Web.Authentication{method: :api_key, private: %{key: key}, roles: %{}}
         end)
     end
 
@@ -108,6 +125,7 @@ defmodule FT.Web.TaggedApiKeyTest do
     test "invalid api key" do
         conn = call([keys: "WRONGKEY"], "XYZZY")
 
+        refute FT.Web.Authentication.authentication(conn)
         assert conn.status == 403
         assert conn.halted
     end
@@ -115,8 +133,9 @@ defmodule FT.Web.TaggedApiKeyTest do
     @tag :api_key
     test "no api key" do
         conn = conn(:get, "/foo", "bar=10")
-        |> TaggedApiKeyPlug.call(%{header: "x-header", keys: "XYZZY", metrics: false})
+        |> TaggedApiKeyPlug.call(%{header: "x-header", keys: "XYZZY", forbid: true, metrics: false})
 
+        refute FT.Web.Authentication.authentication(conn)
         assert conn.status == 403
         assert conn.halted
     end
@@ -129,10 +148,43 @@ defmodule FT.Web.TaggedApiKeyTest do
 
         conn = call(config, "XYZZY")
         assert conn.assigns.api_key == "XYZZY"
+        assert FT.Web.Authentication.authentication(conn)
 
         conn = call(config, "ZXYYX")
         assert conn.status == 403
         assert conn.halted
+    end
+
+    @tag :api_key
+    test "keys specified by key_storage" do
+
+        FT.Web.ETSKeyStorage.setup("XYZZY<>a<>b")
+
+        config = [keys: FT.Web.ETSKeyStorage]
+
+        conn = call(config, "XYZZY")
+        assert conn.assigns.api_key == "XYZZY"
+        assert FT.Web.Authentication.authentication(conn)
+          == %FT.Web.Authentication{method: :api_key, roles: %{a: true, b: true}, private: %{key: "XYZZY"}}
+
+        conn = call(config, "ZXYYX")
+        assert FT.Web.Authentication.authentication(conn) == nil
+        assert conn.status == 403
+        assert conn.halted
+    end
+
+    @tag :api_key
+    test "forbid: false" do
+      conn = call([forbid: false, keys: "XYZZY"], "XYZZY")
+
+      assert conn.assigns.api_key == "XYZZY"
+      assert FT.Web.Authentication.authentication(conn)
+      assert FT.Web.Authentication.authentication(conn) == %FT.Web.Authentication{method: :api_key, private: %{key: "XYZZY"}, roles: %{}}
+
+      conn = call([forbid: false, keys: "XYZZY"], "ZARK!")
+
+      refute FT.Web.Authentication.authentication(conn)
+      refute conn.halted
     end
 
   end

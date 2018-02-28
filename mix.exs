@@ -4,7 +4,7 @@ defmodule Middlewex.Mixfile do
   def project do
     [
       app: :middlewex,
-      version: "0.3.1",
+      version: "0.4.0",
       elixir: "~> 1.5",
       start_permanent: Mix.env == :prod,
       deps: deps(),
@@ -33,7 +33,8 @@ defmodule Middlewex.Mixfile do
       {:credo, "~> 0.5", only: [:dev, :test]},
       {:mix_test_watch, "~> 0.3", only: :dev, runtime: false},
       {:ex_doc, "~> 0.14", only: :dev, runtime: false},
-      {:dialyxir, "~> 0.5", only: [:dev], runtime: false}
+      {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
+      {:benchee, "~> 0.1", only: [:dev, :bench]}
     ]
   end
 

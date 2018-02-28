@@ -123,7 +123,7 @@ defmodule FT.Web.TaggedApiKeyPlug do
           keys
 
         m when is_atom(m) and not is_nil(m) ->
-          Kernel.function_exported?(m, :lookup, 1) ||
+          (Code.ensure_loaded?(m) && Kernel.function_exported?(m, :lookup, 1)) ||
             raise ArgumentError, message: "Module must implement FT.Web.KeyStorage"
 
           m

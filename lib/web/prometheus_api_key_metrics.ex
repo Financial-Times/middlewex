@@ -8,7 +8,12 @@ defmodule FT.Web.PrometheusApiKeyMetrics do
 
   The recorded key is hashed using `:erlang.phash2/1` and the hash value added to the
   `Logger` metadata under `:api_key`. The same hash value is recorded in a
-  `Prometheus.Metric.Counter` with `:method`, `:path_info` and `:keyhash` labels.
+  `Prometheus.Metric.Counter` with `:method`, `:path` and `:keyhash` labels.
+
+  > WARNING since the entire `path_info` is used as a `label`, this will potentially leak sensitive
+  information into Prometheus, and/or cause a memory leak if the path contains many possible
+  varients (e.g. contains a UUID); in which case, write your own module which removes sensitive
+  or high-cardinality data before delegating to this module.
   """
   require Prometheus.Metric.Counter
 

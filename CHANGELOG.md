@@ -9,3 +9,7 @@
     * Add `forbid` boolean option to `FT.Web.TaggedApiKeyPlug` to allow unauthenticated requests to pass, rather than immediately generating the `403 Denied` status:
         * This allows multiple authentication methods to be tried, before enforcing with the `FT.Web.NeedsAuthentication` plug.
 * Add `FT.Web.NeedsAuthenticationPlug` which enforces authentication, optionally with a given authentication method.
+
+# v0.5.0
+
+* Version upgrades for Elixir 1.11 and dependencies

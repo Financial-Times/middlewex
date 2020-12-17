@@ -4,8 +4,8 @@ defmodule Middlewex.Mixfile do
   def project do
     [
       app: :middlewex,
-      version: "0.4.0",
-      elixir: "~> 1.5",
+      version: "0.5.0",
+      elixir: "~> 1.11",
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       name: "Middlewex",
@@ -27,14 +27,14 @@ defmodule Middlewex.Mixfile do
   # Run "mix docs" to generate documentation.
   defp deps do
     [
-      {:plug, "~> 1.4"},
-      {:prometheus_ex, "~> 1.1", optional: true},
-      {:poison, "~> 3.1", optional: true},
-      {:credo, "~> 0.5", only: [:dev, :test]},
-      {:mix_test_watch, "~> 0.3", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.14", only: :dev, runtime: false},
-      {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
-      {:benchee, "~> 0.1", only: [:dev, :bench]}
+      {:plug, "~> 1.11"},
+      {:prometheus_ex, "~> 3.0.5", optional: true},
+      {:poison, "~> 4.0", optional: true},
+      {:credo, "~> 1.5", only: [:dev, :test]},
+      {:mix_test_watch, "~> 1.0", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.23.0", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.0", only: [:dev], runtime: false},
+      {:benchee, "~> 1.0", only: [:dev, :bench]}
     ]
   end
 

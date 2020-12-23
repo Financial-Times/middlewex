@@ -28,7 +28,7 @@ defmodule Middlewex.Mixfile do
   defp deps do
     [
       {:plug, "~> 1.4"},
-      {:prometheus_ex, "~> 1.1", optional: true},
+      {:prometheus_ex, "~> 3.0", optional: true},
       {:poison, "~> 3.1", optional: true},
       {:credo, "~> 0.5", only: [:dev, :test]},
       {:mix_test_watch, "~> 0.3", only: :dev, runtime: false},
